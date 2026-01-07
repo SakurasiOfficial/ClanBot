@@ -25,7 +25,7 @@ async def handle_submit(request):
     
     try:
         data = await request.json()
-        nick = data.get('nick', 'Неизвестно')
+        nick = data.get('nick', 'Unknown')
         
         text = (
             f"<b>🔔 Новая заявка в клан!</b>\n\n"
@@ -35,44 +35,54 @@ async def handle_submit(request):
             f"🏆 Поинты: {data.get('points')}\n"
         )
 
-        # Создаем кнопки (теперь они точно отправятся)
+        # Создаем кнопки (максимально просто)
         kb = InlineKeyboardMarkup(row_width=2)
         kb.add(
-            InlineKeyboardButton("✅ Принять", callback_data=f"accept_{nick}"),
-            InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{nick}")
+            InlineKeyboardButton("✅ Принять", callback_data=f"acc_{nick}"),
+            InlineKeyboardButton("❌ Отклонить", callback_data=f"rej_{nick}")
         )
 
-        # Отправляем сообщение С КНОПКАМИ (reply_markup)
+        # Отправляем админу
         await bot.send_message(ADMIN_ID, text, parse_mode="HTML", reply_markup=kb)
-        
         return web.Response(text="OK", status=200, headers=headers)
     except Exception as e:
         logging.error(f"Ошибка в handle_submit: {e}")
         return web.Response(text="Error", status=500, headers=headers)
 
-# --- ОБРАБОТКА НАЖАТИЙ (Убираем зависание) ---
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith(('accept_', 'reject_')))
+# --- ОБРАБОТКА НАЖАТИЙ (Исправленная логика для обеих кнопок) ---
+@dp.callback_query_handler(lambda c: True) # Ловим все нажатия
 async def process_callback(callback_query: types.CallbackQuery):
-    action_text = "Принят ✅" if "accept" in callback_query.data else "Отклонен ❌"
-    nick = callback_query.data.split('_')[1]
+    data = callback_query.data
+    
+    if data.startswith('acc_'):
+        action_text = "Принят ✅"
+        nick = data.replace('acc_', '')
+    elif data.startswith('rej_'):
+        action_text = "Отклонен ❌"
+        nick = data.replace('rej_', '')
+    else:
+        return
 
-    # Подтверждаем нажатие (убирает часики)
-    await bot.answer_callback_query(callback_query.id, text=f"Игрок {nick}: {action_text}")
+    # 1. Мгновенно убираем часики
+    await bot.answer_callback_query(callback_query.id, text=f"{nick}: {action_text}")
 
-    # Обновляем текст сообщения и убираем кнопки
+    # 2. Обновляем сообщение
     new_text = callback_query.message.text + f"\n\n<b>Статус: {action_text}</b>"
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=new_text,
-        parse_mode="HTML"
-    )
+    try:
+        await bot.edit_message_text(
+            chat_id=callback_query.message.chat.id,
+            message_id=callback_query.message.message_id,
+            text=new_text,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Ошибка при редактировании: {e}")
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("📝 Подать заявку", web_app=WebAppInfo(url=WEBAPP_URL)))
-    await message.answer("Бот запущен! Кнопка для анкеты ниже.", reply_markup=markup)
+    await message.answer("Бот готов! Жми кнопку:", reply_markup=markup)
 
 # --- ЗАПУСК ---
 async def main():
@@ -85,7 +95,7 @@ async def main():
     site = web.TCPSite(runner, '0.0.0.0', 10000)
     
     await site.start()
-    logging.info("Сервер и бот запущены!")
+    logging.info("Сервер Render запущен!")
     
     try:
         await dp.start_polling()
