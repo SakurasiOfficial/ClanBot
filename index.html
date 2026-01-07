@@ -1,44 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; padding: 20px; }
-        input { width: 100%; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0088cc; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        h2 { text-align: center; color: #0088cc; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; padding: 20px; text-align: center; }
+        input { width: 100%; margin: 10px 0; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #2a2a2a; color: white; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background: #0088cc; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
+        h2 { color: #0088cc; }
     </style>
 </head>
 <body>
     <h2>Заявка в Клан</h2>
-    <input type="number" id="age" placeholder="Ваш возраст">
     <input type="text" id="nickname" placeholder="Ник в игре">
+    <input type="number" id="age" placeholder="Ваш возраст">
     <input type="number" id="hours" placeholder="Кол-во часов">
     <input type="number" id="points" placeholder="Поинты (Points)">
-    <button onclick="sendData()">Отправить заявку</button>
+    <button id="send_btn">Отправить заявку</button>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
+        tg.expand();
 
-        function sendData() {
-            let data = {
-                age: document.getElementById('age').value,
+        // Твой адрес на Render (обязательно с /submit в конце)
+        const SERVER_URL = "https://clanbot-9ufb.onrender.com/submit";
+
+        document.getElementById('send_btn').addEventListener('click', () => {
+            const data = {
                 nick: document.getElementById('nickname').value,
+                age: document.getElementById('age').value,
                 hours: document.getElementById('hours').value,
                 points: document.getElementById('points').value
             };
-            
-            if(!data.age || !data.nick || !data.hours || !data.points) {
-                alert("Заполни все поля!");
+
+            // Простая проверка на пустые поля
+            if (!data.nick || !data.age || !data.hours || !data.points) {
+                alert("Пожалуйста, заполни все поля!");
                 return;
             }
-            
-            tg.sendData(JSON.stringify(data)); // Отправляет данные боту
-            tg.close();
-        }
+
+            // Отправляем данные на твоего бота
+            fetch(SERVER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    tg.close(); // Закрываем анкету после успеха
+                } else {
+                    alert("Ошибка отправки! Убедись, что бот в Render запущен.");
+                }
+            })
+            .catch((err) => {
+                alert("Не удалось связаться с ботом: " + err);
+            });
+        });
     </script>
 </body>
 </html>
