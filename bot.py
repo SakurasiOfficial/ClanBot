@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiohttp import web
 
-# --- НАСТРОЙКИ (Твои данные уже вписаны) ---
+# --- НАСТРОЙКИ ---
 TOKEN = "8256898976:AAEBnI-SQf4zK_6-eUjY4IlFY0C1UPhB0CY"
 ADMIN_ID = 5831918933 
 WEBAPP_URL = "https://sakurasiofficial.github.io/ClanBot/" 
@@ -20,7 +20,6 @@ async def handle_submit(request):
         "Access-Control-Allow-Headers": "Content-Type",
     }
     
-    # Ответ на предварительную проверку браузера
     if request.method == "OPTIONS":
         return web.Response(status=200, headers=headers)
     
@@ -36,30 +35,31 @@ async def handle_submit(request):
             f"🏆 Поинты: {data.get('points')}\n"
         )
 
-        # Кнопки для админа
+        # Создаем кнопки (теперь они точно отправятся)
         kb = InlineKeyboardMarkup(row_width=2)
         kb.add(
             InlineKeyboardButton("✅ Принять", callback_data=f"accept_{nick}"),
             InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{nick}")
         )
 
+        # Отправляем сообщение С КНОПКАМИ (reply_markup)
         await bot.send_message(ADMIN_ID, text, parse_mode="HTML", reply_markup=kb)
+        
         return web.Response(text="OK", status=200, headers=headers)
     except Exception as e:
-        logging.error(f"Ошибка при получении заявки: {e}")
+        logging.error(f"Ошибка в handle_submit: {e}")
         return web.Response(text="Error", status=500, headers=headers)
 
-# --- ОБРАБОТКА НАЖАТИЙ НА КНОПКИ (Убираем зависание) ---
+# --- ОБРАБОТКА НАЖАТИЙ (Убираем зависание) ---
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith(('accept_', 'reject_')))
 async def process_callback(callback_query: types.CallbackQuery):
-    # Определяем действие
     action_text = "Принят ✅" if "accept" in callback_query.data else "Отклонен ❌"
     nick = callback_query.data.split('_')[1]
 
-    # 1. СРАЗУ отвечаем Телеграму, чтобы убрать "часики"
+    # Подтверждаем нажатие (убирает часики)
     await bot.answer_callback_query(callback_query.id, text=f"Игрок {nick}: {action_text}")
 
-    # 2. Обновляем сообщение у админа (убираем кнопки)
+    # Обновляем текст сообщения и убираем кнопки
     new_text = callback_query.message.text + f"\n\n<b>Статус: {action_text}</b>"
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
@@ -68,16 +68,14 @@ async def process_callback(callback_query: types.CallbackQuery):
         parse_mode="HTML"
     )
 
-# Команда /start
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("📝 Подать заявку", web_app=WebAppInfo(url=WEBAPP_URL)))
-    await message.answer("Бот запущен! Нажми кнопку ниже, чтобы открыть анкету.", reply_markup=markup)
+    await message.answer("Бот запущен! Кнопка для анкеты ниже.", reply_markup=markup)
 
-# --- ЗАПУСК ВСЕГО ВМЕСТЕ ---
+# --- ЗАПУСК ---
 async def main():
-    # Настройка веб-сервера для сайта
     app = web.Application()
     app.router.add_post('/submit', handle_submit)
     app.router.add_options('/submit', handle_submit)
@@ -86,13 +84,13 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 10000)
     
-    logging.info("Запуск сервера на порту 10000 и Polling...")
+    await site.start()
+    logging.info("Сервер и бот запущены!")
     
-    # Запускаем сервер и бота одновременно
-    await asyncio.gather(
-        site.start(),
-        dp.start_polling()
-    )
+    try:
+        await dp.start_polling()
+    finally:
+        await bot.session.close()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
