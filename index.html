@@ -19,43 +19,32 @@
     <input type="number" id="points" placeholder="Поинты (Points)">
     <button id="send_btn">Отправить заявку</button>
 
-    <script>
+<script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
         const SERVER_URL = "https://clanbot-9ufb.onrender.com/submit";
 
         document.getElementById('send_btn').addEventListener('click', () => {
+            const user = tg.initDataUnsafe.user || {};
             const data = {
-                // Извлекаем ID пользователя из Telegram
-                user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
+                user_id: user.id || null,
+                username: user.username || null, // Берем ник из телеграма
                 nick: document.getElementById('nickname').value,
                 age: document.getElementById('age').value,
                 hours: document.getElementById('hours').value,
                 points: document.getElementById('points').value
             };
 
-            if (!data.nick || !data.age || !data.hours || !data.points) {
-                alert("Пожалуйста, заполни все поля!");
-                return;
-            }
-
             fetch(SERVER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
-            .then(response => {
-                if (response.ok) {
-                    tg.close(); // Закрываем анкету
-                } else {
-                    alert("Ошибка отправки на сервер!");
-                }
-            })
-            .catch((err) => {
-                alert("Ошибка связи с ботом: " + err);
-            });
+            .then(response => { if (response.ok) tg.close(); })
+            .catch(err => alert("Ошибка: " + err));
         });
     </script>
 </body>
 </html>
+
