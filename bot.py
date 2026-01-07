@@ -1,80 +1,73 @@
 import asyncio
 import json
-import logging
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- НАСТРОЙКИ ---
-TOKEN = "8256898976:AAEBnI-SQf4zK_6-eUjY4IlFY0C1UPhB0CY"
-ADMIN_ID = 5831918933  # Твой ID, куда будут падать заявки
-WEBAPP_URL = "https://sakurasiofficial.github.io/ClanBot/" # Ссылка на твой HTML
-# -----------------
-
-# Включаем логирование, чтобы видеть ошибки в консоли
-logging.basicConfig(level=logging.INFO)
+# --- НАСТРОЙКИ (ЗАПОЛНИ СВОИ) ---
+TOKEN = "ВАШ_ТОКЕН"
+ADMIN_ID = 123456789 # Твой ID
+WEBAPP_URL = "https://твойник.github.io/ClanBot/" 
+# -------------------------------
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Приветствие при команде /start
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
-    # Можешь дописать здесь свой текст
-    welcome_text = (
-        "Привет! Добро пожаловать в систему подачи заявок клана.\n"
-        "Чтобы вступить к нам, нажми на кнопку ниже или используй /application."
-    )
-    
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📝 Подать заявку", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
-    
-    await message.answer(welcome_text, reply_markup=markup)
+    await message.answer("Привет! Нажми на кнопку, чтобы заполнить анкету в клан.", reply_markup=markup)
 
-# Команда /application (дублирует открытие приложения)
-@dp.message(Command("application"))
-async def open_app(message: types.Message):
-    markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Открыть анкету", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
-    await message.answer("Нажми кнопку, чтобы заполнить данные:", reply_markup=markup)
-
-# Обработка данных, пришедших из Mini App
 @dp.message(lambda message: message.web_app_data)
 async def handle_webapp_data(message: types.Message):
-    # Распаковываем JSON данные из веб-приложения
     try:
         data = json.loads(message.web_app_data.data)
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
         
-        # Формируем текст для админа (для тебя)
+        # Текст анкеты для тебя
         admin_text = (
             f"📩 **Новая заявка в клан!**\n\n"
-            f"👤 **Ник:** `{data.get('nick')}`\n"
-            f"🎂 **Возраст:** {data.get('age')}\n"
-            f"⏳ **Часов:** {data.get('hours')}\n"
-            f"🏆 **Поинтов:** {data.get('points')}\n\n"
-            f"🔗 **Профиль в TG:** @{message.from_user.username if message.from_user.username else 'скрыт'}\n"
-            f"🆔 **ID пользователя:** `{message.from_user.id}`"
+            f"👤 Ник: `{data.get('nick')}`\n"
+            f"🎂 Возраст: {data.get('age')}\n"
+            f"⏳ Часов: {data.get('hours')}\n"
+            f"🏆 Поинтов: {data.get('points')}\n\n"
+            f"🔗 Ссылка: [{user_name}](tg://user?id={user_id})"
         )
-        
-        # Отправляем заявку тебе
-        await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown")
-        
-        # Отвечаем пользователю
-        await message.answer("✅ Твоя заявка успешно отправлена! Лидер клана рассмотрит её в ближайшее время.")
-        
-    except Exception as e:
-        logging.error(f"Ошибка при обработке данных: {e}")
-        await message.answer("Произошла ошибка при отправке заявки. Попробуй еще раз.")
 
-# Запуск бота
+        # Создаем кнопки действия
+        markup = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Принять", callback_data=f"adm_accept_{user_id}"),
+                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm_decline_{user_id}")
+            ]
+        ])
+
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="Markdown", reply_markup=markup)
+        await message.answer("✅ Твоя заявка отправлена! Ожидай решения лидера.")
+
+    except Exception as e:
+        print(f"Ошибка в данных: {e}")
+
+# Обработка нажатий на кнопки Принять/Отклонить
+@dp.callback_query(F.data.startswith("adm_"))
+async def process_decision(callback: types.CallbackQuery):
+    action = callback.data.split("_")[1]
+    player_id = int(callback.data.split("_")[2])
+
+    if action == "accept":
+        await bot.send_message(player_id, "🎉 Поздравляем! Ты принят в клан. Лидер скоро свяжется с тобой!")
+        await callback.message.edit_text(callback.message.text + "\n\nСтатус: ✅ **ПРИНЯТ**", parse_mode="Markdown")
+    else:
+        await bot.send_message(player_id, "😔 К сожалению, твоя заявка в клан отклонена.")
+        await callback.message.edit_text(callback.message.text + "\n\nСтатус: ❌ **ОТКЛОНЕН**", parse_mode="Markdown")
+    
+    await callback.answer()
+
 async def main():
-    print("Бот запущен и готов принимать заявки!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Бот выключен")
+    asyncio.run(main())
