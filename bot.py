@@ -5,9 +5,9 @@ from aiogram.filters import Command
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- НАСТРОЙКИ (ЗАПОЛНИ СВОИ) ---
-TOKEN = "ВАШ_ТОКЕН"
-ADMIN_ID = 123456789 # Твой ID
-WEBAPP_URL = "https://твойник.github.io/ClanBot/" 
+TOKEN = "8256898976:AAEBnI-SQf4zK_6-eUjY4IlFY0C1UPhB0CY"
+ADMIN_ID = 5831918933 # Твой ID
+WEBAPP_URL = "https://sakurasiofficial.github.io/ClanBot/" 
 # -------------------------------
 
 bot = Bot(token=TOKEN)
@@ -71,3 +71,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
