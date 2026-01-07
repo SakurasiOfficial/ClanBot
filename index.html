@@ -23,24 +23,23 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Твой адрес на Render (обязательно с /submit в конце)
         const SERVER_URL = "https://clanbot-9ufb.onrender.com/submit";
 
         document.getElementById('send_btn').addEventListener('click', () => {
             const data = {
+                // Извлекаем ID пользователя из Telegram
+                user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
                 nick: document.getElementById('nickname').value,
                 age: document.getElementById('age').value,
                 hours: document.getElementById('hours').value,
                 points: document.getElementById('points').value
             };
 
-            // Простая проверка на пустые поля
             if (!data.nick || !data.age || !data.hours || !data.points) {
                 alert("Пожалуйста, заполни все поля!");
                 return;
             }
 
-            // Отправляем данные на твоего бота
             fetch(SERVER_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -48,13 +47,13 @@
             })
             .then(response => {
                 if (response.ok) {
-                    tg.close(); // Закрываем анкету после успеха
+                    tg.close(); // Закрываем анкету
                 } else {
-                    alert("Ошибка отправки! Убедись, что бот в Render запущен.");
+                    alert("Ошибка отправки на сервер!");
                 }
             })
             .catch((err) => {
-                alert("Не удалось связаться с ботом: " + err);
+                alert("Ошибка связи с ботом: " + err);
             });
         });
     </script>
