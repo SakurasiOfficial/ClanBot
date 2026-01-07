@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; padding: 20px; }
+        input { width: 100%; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #0088cc; border: none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        h2 { text-align: center; color: #0088cc; }
+    </style>
+</head>
+<body>
+    <h2>Заявка в Клан</h2>
+    <input type="number" id="age" placeholder="Ваш возраст">
+    <input type="text" id="nickname" placeholder="Ник в игре">
+    <input type="number" id="hours" placeholder="Кол-во часов">
+    <input type="number" id="points" placeholder="Поинты (Points)">
+    <button onclick="sendData()">Отправить заявку</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
+
+        function sendData() {
+            let data = {
+                age: document.getElementById('age').value,
+                nick: document.getElementById('nickname').value,
+                hours: document.getElementById('hours').value,
+                points: document.getElementById('points').value
+            };
+            
+            if(!data.age || !data.nick || !data.hours || !data.points) {
+                alert("Заполни все поля!");
+                return;
+            }
+            
+            tg.sendData(JSON.stringify(data)); // Отправляет данные боту
+            tg.close();
+        }
+    </script>
+</body>
+</html>
